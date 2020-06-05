@@ -12,9 +12,9 @@ ARG ZEEK_VERSION=v3.1.3
 RUN echo "===> Cloning zeek..." \
     && git clone --single-branch --branch "$ZEEK_VERSION" --recurse-submodules https://github.com/zeek/zeek.git /tmp/zeek
 
-RUN echo "===> Building & installing broker..." \
+RUN echo "===> Building & installing zeek..." \
     && cd /tmp/zeek \
-    && ./configure --enable-cpp-tests --disable-python \
+    && ./configure --disable-python \
     && make -j2 \
     && make test \
     && make install
