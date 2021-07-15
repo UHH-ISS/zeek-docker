@@ -1,0 +1,36 @@
+FROM debian:buster-slim
+
+RUN echo "===> Installing build dependencies..." \
+    && apt-get update && apt-get upgrade -y \
+    && apt-get -y --no-install-recommends install bash ca-certificates build-essential git cmake swig bison gawk flex \
+    python3 python3-dev python3-pip python3-setuptools python3-wheel \
+    libssl-dev libpcap-dev zlib1g-dev libmaxminddb-dev libbrotli-dev libnghttp2-dev
+
+ARG ZEEK_VERSION=v4.0.0
+
+RUN echo "===> Cloning zeek..." \
+    && git clone --depth 1 --single-branch --branch "$ZEEK_VERSION" --recurse-submodules https://github.com/zeek/zeek.git /src/zeek
+
+WORKDIR /src/zeek
+RUN echo "===> Building & installing zeek..." \
+    && ./configure --build-type=Release \
+    && make -j4 \
+    && make test \
+    && make install
+
+# Setup ZEEKPATH and PATH
+ENV ZEEKPATH=/usr/local/zeek/share/zeek:/usr/local/zeek/share/zeek/site:/usr/local/zeek/share/zeek/policy
+ENV PATH "$PATH:/usr/local/zeek/bin"
+
+# Install and configure zkg
+RUN echo "===> Installing zkg..." \
+    && pip3 install --no-cache-dir setuptools wheel zkg
+# Copy config file for zkg (and force zkg to use it)
+COPY zkg.conf /usr/local/zeek/zkg/config
+ENV ZKG_CONFIG_FILE /usr/local/zeek/zkg/config
+
+# Volume for logs
+VOLUME /usr/local/zeek/logs
+WORKDIR /usr/local/zeek/logs
+
+CMD [ "/bin/bash", "-l" ]

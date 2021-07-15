@@ -1,0 +1,35 @@
+FROM alpine:3.14
+
+RUN echo "===> Installing build dependencies..." \
+    && apk add --no-cache bash ca-certificates git make cmake g++ bison swig \
+    python3 python3-dev py3-pip py3-setuptools py3-wheel \
+    openssl-dev libpcap-dev zlib-dev libmaxminddb-dev flex-dev fts-dev brotli-dev nghttp2-dev linux-headers bsd-compat-headers
+
+ARG ZEEK_VERSION=v4.0.0
+
+RUN echo "===> Cloning zeek..." \
+    && git clone --depth 1 --single-branch --branch "$ZEEK_VERSION" --recurse-submodules https://github.com/zeek/zeek.git /src/zeek
+
+WORKDIR /src/zeek
+RUN echo "===> Building & installing zeek..." \
+    && ./configure --build-type=Release \
+    && make -j4 \
+    && make test \
+    && make install
+
+# Setup ZEEKPATH and PATH
+ENV ZEEKPATH=/usr/local/zeek/share/zeek:/usr/local/zeek/share/zeek/site:/usr/local/zeek/share/zeek/policy
+ENV PATH "$PATH:/usr/local/zeek/bin"
+
+# Install and configure zkg
+RUN echo "===> Installing zkg..." \
+    && pip3 install --no-cache-dir setuptools wheel zkg
+# Copy config file for zkg (and force zkg to use it)
+COPY zkg.conf /usr/local/zeek/zkg/config
+ENV ZKG_CONFIG_FILE /usr/local/zeek/zkg/config
+
+# Volume for logs
+VOLUME /usr/local/zeek/logs
+WORKDIR /usr/local/zeek/logs
+
+CMD [ "/bin/bash", "-l" ]
